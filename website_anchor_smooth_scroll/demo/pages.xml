@@ -71,7 +71,7 @@
 <record id="demo_page_link" model="website.menu">
     <field name="name">Anchor smooth scroll demo</field>
     <field name="url">/page/website_anchor_smooth_scroll.demo_page</field>
-    <field name="parent_id" ref="website.main_menu" />
+    <field name="parent_id" ref="website_sale.main_menu" />
     <field name="sequence" type="int">50</field>
 </record>
 

@@ -14,7 +14,7 @@
     "application": False,
     "installable": True,
     "depends": [
-        "website",
+        "website_sale",
     ],
     "data": [
         "views/assets.xml",
