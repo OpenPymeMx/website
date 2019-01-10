@@ -12,7 +12,7 @@
     "application": False,
     "installable": True,
     "depends": [
-        "website_crm_privacy_policy",
+        "website_sale",
     ],
     "data": [
         "views/snippets.xml",
