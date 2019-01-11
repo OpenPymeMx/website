@@ -12,6 +12,7 @@
     "application": False,
     "installable": True,
     "depends": [
+        "crm",
         "website_sale",
     ],
     "data": [

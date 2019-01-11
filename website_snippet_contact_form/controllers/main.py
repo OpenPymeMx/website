@@ -2,9 +2,13 @@
 # © 2015 Antiun Ingeniería, S.L.
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
-from openerp import http
+import base64
+import werkzeug
+
+from openerp import http, SUPERUSER_ID
 from openerp.exceptions import ValidationError
 from openerp.http import request
+from openerp.tools.translate import _
 
 
 class snippetContactus(http.Controller):
@@ -33,14 +37,24 @@ class snippetContactus(http.Controller):
         """ Allow to be overrided """
         company = request.website.company_id
         return {
-            'google_map_url': self.generate_google_map_url(company.street, company.city, company.zip, company.country_id and company.country_id.name_get()[0][1] or ''),
+            'google_map_url': self.generate_google_map_url(
+                company.street,
+                company.city,
+                company.zip,
+                company.country_id and company.country_id.name_get()[0][1] or ''
+            ),
             '_values': values,
             '_kwargs': kwargs,
         }
 
     def get_contactus_response(self, values, kwargs):
         values = self.preRenderThanks(values, kwargs)
-        return request.website.render(kwargs.get("view_callback", "website_crm.contactus_thanks"), values)
+        return request.website.render(
+            kwargs.get(
+                "view_callback",
+                "website_snippet_contact_form.contactus_thanks"
+            ), values
+        )
 
     @http.route(['/crm/contactus'], type='http', auth="public", website=True)
     def contactus(self, **kwargs):
@@ -58,29 +72,40 @@ class snippetContactus(http.Controller):
         post_description = []  # Info to add after the message
         values = {}
 
-        values['medium_id'] = request.registry['ir.model.data'].xmlid_to_res_id(request.cr, SUPERUSER_ID, 'crm.crm_medium_website')
-        values['section_id'] = request.registry['ir.model.data'].xmlid_to_res_id(request.cr, SUPERUSER_ID, 'website.salesteam_website_sales')
+        values['medium_id'] = request.registry['ir.model.data'].xmlid_to_res_id(
+            request.cr, SUPERUSER_ID, 'crm.crm_medium_website'
+        )
+        values['section_id'] = request.registry['ir.model.data'].xmlid_to_res_id(
+            request.cr, SUPERUSER_ID, 'website.salesteam_website_sales'
+        )
 
         for field_name, field_value in kwargs.items():
             if hasattr(field_value, 'filename'):
                 post_file.append(field_value)
             elif field_name in request.registry['crm.lead']._fields and field_name not in _BLACKLIST:
                 values[field_name] = field_value
-            elif field_name not in _TECHNICAL:  # allow to add some free fields or blacklisted field like ID
+            elif field_name not in _TECHNICAL:
+                # allow to add some free fields or blacklisted field like ID
                 post_description.append("%s: %s" % (field_name, field_value))
 
-        if "name" not in kwargs and values.get("contact_name"):  # if kwarg.name is empty, it's an error, we cannot copy the contact_name
+        # if kwarg.name is empty, it's an error, we cannot copy the contact_name
+        if "name" not in kwargs and values.get("contact_name"):
             values["name"] = values.get("contact_name")
         # fields validation : Check that required field from model crm_lead exists
         error = set(field for field in _REQUIRED if not values.get(field))
 
         if error:
             values = dict(values, error=error, kwargs=kwargs.items())
-            return request.website.render(kwargs.get("view_from", "website.contactus"), values)
+            return request.website.render(
+                "website_snippet_contact_form.validation_error_page",
+                kwargs
+            )
 
         # description is required, so it is always already initialized
         if post_description:
-            values['description'] += dict_to_str(_("Custom Fields: "), post_description)
+            values['description'] += dict_to_str(
+                _("Custom Fields: "), post_description
+            )
 
         if kwargs.get("show_info"):
             post_description = []
@@ -103,18 +128,11 @@ class snippetContactus(http.Controller):
                     'datas': base64.encodestring(field_value.read()),
                     'datas_fname': field_value.filename,
                 }
-                request.registry['ir.attachment'].create(request.cr, SUPERUSER_ID, attachment_value, context=request.context)
+                request.registry['ir.attachment'].create(
+                    request.cr,
+                    SUPERUSER_ID,
+                    attachment_value,
+                    context=request.context
+                )
 
         return self.get_contactus_response(values, kwargs)
-
-    @http.route(['/crm/contactus'], type='http', auth="public", website=True)
-    def contactus(self, **kwargs):
-        try:
-            res = super(snippetContactus, self).contactus(**kwargs)
-        except ValidationError, e:
-            kwargs.update({
-                'error': e.value,
-            })
-            res = request.website.render(
-                "website_snippet_contact_form.validation_error_page", kwargs)
-        return res
