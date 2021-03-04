@@ -50,7 +50,7 @@ var SlideDialog = Widget.extend({
         this.$('.alert-warning').remove();
         this.is_valid_url = false;
         this.$('.save').button('loading');
-        ajax.jsonRpc('/slides/dialog_preview/', 'call', value).then(function (data) {
+        openerp.jsonRpc('/slides/dialog_preview/', 'call', value).then(function (data) {
             self.$('.save').button('reset');
             if (data.error) {
                 self.display_alert(data.error);
